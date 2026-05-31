@@ -1,184 +1,173 @@
-# 通讯录管理系统
+# Address Book Manager
 
-基于 C 语言实现的控制台通讯录管理系统，采用链表数据结构和 CSV 文件存储。
+A robust C-based console address book management system with CSV storage, designed for reliability and long-term use.
 
-## 功能特性
+## Features
 
-### 核心功能
-- **新增联系人**：交互式输入，支持输入校验和重复检测
-- **批量录入**：连续添加多个联系人
-- **浏览通讯录**：分页显示，支持多种排序方式
-- **查询联系人**：关键词模糊查询、按分类查询
-- **修改联系人**：按编号定位，保留原值直接回车
-- **删除联系人**：删除前确认，自动备份到回收站
-- **保存数据**：手动保存到 CSV 文件
-- **导入数据**：从外部 CSV 文件导入
-- **导出数据**：导出到指定文件
-- **分类统计**：按分类统计联系人数量
+### Core Operations
+- **Add Contact**: Interactive input with validation and duplicate detection
+- **Batch Add**: Add multiple contacts at once
+- **Browse**: Paginated display with sorting (by name, mobile, company, category)
+- **Search**: Keyword search and category filter
+- **Modify**: Update contact with auto-backup
+- **Delete**: Move to trash with backup (recoverable)
 
-### 数据管理
-- 分页显示（每页 10 条）
-- 模糊查询（姓名、单位、手机、Email、QQ、地址、备注）
-- 重复记录提示（姓名+手机号）
-- 输入校验（姓名必填、手机号格式、Email 格式、QQ 号格式）
-- 分类统计
+### Data Management
+- **CSV Storage**: UTF-8 with BOM, handles Chinese, commas, quotes, newlines
+- **Auto Backup**: Automatic backup before delete/modify/import operations
+- **Recycle Bin**: Deleted contacts stored in trash.csv, can be restored
+- **Import/Export**: Robust CSV import with error reporting
+- **Validation Report**: Check for empty fields, format errors, duplicates
 
-### 可靠性增强
-- 删除回收站：删除的联系人自动备份到 `data/trash.csv`
-- 自动备份：每次启动时自动备份当前数据文件到 `data/backup/`
-- 数据持久化：CSV 格式存储，支持 Excel 打开
+### Command Line Interface
+```bash
+# Show help
+address_book --help
 
-## 联系人字段
+# Specify data file
+address_book --data my_contacts.csv
 
-| 字段 | 说明 | 必填 |
-|------|------|------|
-| 姓名 | 联系人姓名 | 是 |
-| 单位 | 工作单位 | 否 |
-| 固定电话 | 座机号码 | 否 |
-| 手机号 | 11 位手机号 | 否 |
-| 分类 | 家人/朋友/同事/商业/其他 | 是 |
-| Email | 电子邮箱 | 否 |
-| QQ | QQ 号码 | 否 |
-| 地址 | 联系地址 | 否 |
-| 备注 | 补充信息 | 否 |
+# Import and exit
+address_book --import new_contacts.csv
 
-## 编译方式
+# Export and exit
+address_book --export backup.csv
 
-### 环境要求
+# Validate and exit
+address_book --validate
+```
+
+## Building
+
+### Requirements
 - Windows 10/11
-- Visual Studio 2019/2022（含 C++ 桌面开发工作负载）
+- Visual Studio 2019/2022 (with C++ desktop development)
 - CMake 3.10+
 
-### 使用 CMake 命令行编译
-
+### Build with CMake
 ```bash
-# 进入项目目录
-cd D:\Code\Projects\coursework\course-design-revival\06-c-address-book
-
-# 创建构建目录
 mkdir build
 cd build
-
-# 生成 VS 解决方案
-cmake .. -G "Visual Studio 17 2022"
-
-# 编译（Release 版本）
+cmake .. -G "Visual Studio 18 2026" -A x64
 cmake --build . --config Release
-
-# 或编译（Debug 版本）
-cmake --build . --config Debug
 ```
 
-### 使用 Visual Studio IDE
-
-1. 打开 Visual Studio
-2. 选择"打开本地文件夹"，选择项目根目录
-3. VS 会自动检测 CMakeLists.txt 并配置项目
-4. 按 F5 编译并运行
-
-## 运行方式
-
+### Run
 ```bash
-# 运行程序
-.\build\Release\address_book.exe
-
-# 或在 Debug 模式下
-.\build\Debug\address_book.exe
+cd build
+.\Release\address_book.exe
 ```
 
-程序启动后会自动：
-1. 创建必要的目录结构
-2. 备份当前数据文件
-3. 加载 `data/contacts.csv` 中的联系人数据
-
-## 菜单说明
+## Menu Options
 
 ```
-  通 讯 录 管 理 系 统
-  当前联系人数量: 12
+  Address Book Manager
+  Contacts: 12 | File: data/contacts.csv
 
-    1. 新增联系人
-    2. 批量录入
-    3. 浏览通讯录
-    4. 查询联系人
-    5. 修改联系人
-    6. 删除联系人
-    7. 保存数据
-    8. 导入数据
-    9. 导出数据
-   10. 分类统计
-    0. 退出系统
+    1. Add Contact
+    2. Batch Add
+    3. Browse
+    4. Search
+    5. Modify
+    6. Delete
+    7. Save
+    8. Import
+    9. Export
+   10. Statistics
+   11. Trash (View/Restore)
+   12. Validate Data
+    0. Exit
 ```
 
-### 浏览模式快捷键
-- `N` - 下一页
-- `P` - 上一页
-- `F` - 第一页
-- `L` - 最后一页
-- `S` - 排序（支持按姓名、手机号、单位、分类排序）
-- `V` - 查看联系人详情
-- `Q` - 返回主菜单
+## Browse Mode Keys
+- `N` - Next page
+- `P` - Previous page
+- `F` - First page
+- `L` - Last page
+- `S` - Sort (by name, mobile, company, or category)
+- `V` - View contact details
+- `Q` - Return to main menu
 
-## 数据格式
+## Data Format
 
-数据文件使用 CSV 格式，字段如下：
-
+CSV file with UTF-8 BOM encoding:
 ```
 id,name,company,phone,mobile,category,email,qq,address,note,create_time,modify_time
-1,张伟,北京科技有限公司,010-88886666,13800138001,2,zhangwei@example.com,123456789,北京市海淀区中关村大街1号,同事,1717000000,1717000000
+1,John Doe,Acme Inc,010-12345678,13800138000,2,john@example.com,123456,123 Main St,Colleague,1717000000,1717000000
 ```
 
-分类编码：
-- `0` = 家人
-- `1` = 朋友
-- `2` = 同事
-- `3` = 商业
-- `4` = 其他
+Category codes:
+- `0` = Family
+- `1` = Friend
+- `2` = Work
+- `3` = Business
+- `4` = Other
 
-详细格式说明请参考 [docs/data_format.md](docs/data_format.md)。
+## Data Recovery
 
-## 项目结构
+### Automatic Backups
+The system automatically creates backups in `data/backup/` before:
+- Deleting contacts
+- Modifying contacts
+- Importing data
+- Program startup
+
+Backup files are named with timestamps: `contacts_20240101_120000.csv`
+
+### Trash/Recycle Bin
+Deleted contacts are moved to `data/trash.csv`. Use menu option 11 to view and restore them.
+
+### Manual Recovery
+If the main data file is corrupted:
+1. Check `data/backup/` for recent backups
+2. Copy a backup to `data/contacts.csv`
+3. Restart the program
+
+## Validation Report
+
+Menu option 12 checks for:
+- Empty required fields (name, phone numbers)
+- Invalid phone/email/QQ formats
+- Duplicate contacts (same name + mobile)
+
+## Project Structure
 
 ```
 06-c-address-book/
-├── CMakeLists.txt          # CMake 构建配置
-├── README.md               # 项目说明
-├── .gitignore              # Git 忽略规则
-├── include/                # 头文件
-│   ├── contact.h           # 联系人数据结构
-│   ├── list.h              # 链表操作
-│   ├── fileio.h            # 文件读写
-│   ├── search.h            # 搜索功能
-│   ├── validate.h          # 输入校验
-│   └── utils.h             # 工具函数
-├── src/                    # 源文件
-│   ├── main.c              # 主程序和菜单
-│   ├── contact.c           # 联系人操作
-│   ├── list.c              # 链表实现
-│   ├── fileio.c            # CSV 文件读写
-│   ├── search.c            # 搜索和统计
-│   ├── validate.c          # 输入校验
-│   └── utils.c             # 工具函数
-├── data/                   # 数据文件
-│   ├── contacts.csv        # 主数据文件
-│   └── backup/             # 自动备份目录
-└── docs/                   # 文档
-    └── data_format.md      # 数据格式说明
+├── CMakeLists.txt
+├── README.md
+├── .gitignore
+├── include/
+│   ├── contact.h
+│   ├── list.h
+│   ├── fileio.h
+│   ├── search.h
+│   ├── validate.h
+│   └── utils.h
+├── src/
+│   ├── main.c
+│   ├── contact.c
+│   ├── list.c
+│   ├── fileio.c
+│   ├── search.c
+│   ├── validate.c
+│   └── utils.c
+├── data/
+│   ├── contacts.csv
+│   ├── trash.csv
+│   └── backup/
+└── docs/
+    └── data_format.md
 ```
 
-## 技术要点
+## Technical Details
 
-- **数据结构**：双向链表，支持高效的插入、删除和排序
-- **排序算法**：归并排序（稳定排序，时间复杂度 O(n log n)）
-- **文件格式**：CSV 格式，支持 Excel 打开中文
-- **编码支持**：UTF-8 编码，控制台设置为 UTF-8 模式
-- **内存管理**：链表节点动态分配，退出时释放所有内存
-- **输入校验**：姓名必填、手机号/Email/QQ 格式验证
+- **Data Structure**: Doubly linked list for efficient insert/delete/sort
+- **Sorting**: Merge sort (stable, O(n log n))
+- **CSV Parsing**: Handles quoted fields, escaped quotes, embedded commas
+- **Memory**: Dynamic allocation with proper cleanup on exit
+- **Encoding**: UTF-8 with BOM for Excel compatibility
 
-## 示例数据
+## License
 
-程序自带 12 条示例数据，涵盖不同分类的联系人，可直接用于演示。
-
-## 许可证
-
-本项目为课程设计作品，仅供学习参考。
+This is a coursework project for educational purposes.

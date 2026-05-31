@@ -3,31 +3,49 @@
 
 #include "list.h"
 
-/* 数据文件路径（全局） */
+/* Data file paths */
 #define DATA_DIR         "data"
 #define DATA_FILE        "data/contacts.csv"
 #define TRASH_FILE       "data/trash.csv"
 #define BACKUP_DIR       "data/backup"
 
-/* 从 CSV 加载联系人到链表 */
+/* Import result structure */
+typedef struct {
+    int total_lines;      /* Total lines in file */
+    int success_count;    /* Successfully imported */
+    int error_count;      /* Lines with errors */
+    int duplicate_count;  /* Duplicate contacts skipped */
+    char error_msg[1024]; /* Error details */
+} ImportResult;
+
+/* Load contacts from CSV file */
 int fileio_load(LinkedList *list, const char *filepath);
 
-/* 保存链表到 CSV 文件 */
+/* Save contacts to CSV file */
 int fileio_save(LinkedList *list, const char *filepath);
 
-/* 自动备份当前数据文件 */
+/* Auto backup current data file */
 int fileio_backup(void);
 
-/* 导出到指定文件 */
+/* Export to specified file */
 int fileio_export(LinkedList *list, const char *filepath);
 
-/* 从指定文件导入（追加到链表，去重） */
-int fileio_import(LinkedList *list, const char *filepath);
+/* Import from file with error reporting */
+int fileio_import(LinkedList *list, const char *filepath, ImportResult *result);
 
-/* 保存删除的联系人到回收站 */
+/* Save deleted contact to trash */
 int fileio_save_trash(const Contact *c);
 
-/* 确保数据目录存在 */
+/* Load trash contacts */
+int fileio_load_trash(LinkedList *list);
+
+/* Restore contact from trash by ID */
+int fileio_restore_from_trash(LinkedList *book, LinkedList *trash, int trash_id);
+
+/* Ensure data directories exist */
 void fileio_ensure_dirs(void);
+
+/* Data validation report */
+int fileio_validate_report(LinkedList *list, char *report, int report_size);
 
 #endif /* FILEIO_H */

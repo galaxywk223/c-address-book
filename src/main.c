@@ -11,6 +11,7 @@
 
 static LinkedList g_book;
 static int g_dirty = 0;
+static char g_data_file[256] = DATA_FILE;
 
 static void menu_add(void);
 static void menu_batch_add(void);
@@ -22,19 +23,117 @@ static void menu_save(void);
 static void menu_import(void);
 static void menu_export(void);
 static void menu_stats(void);
+static void menu_trash(void);
+static void menu_validate(void);
 static void print_main_menu(void);
 static void browse_list(LinkedList *list, const char *title);
+static void print_usage(const char *prog);
 
-int main(void) {
+static void print_usage(const char *prog) {
+    printf("Usage: %s [options]\n", prog);
+    printf("Options:\n");
+    printf("  -d, --data <file>    Specify data file path (default: data/contacts.csv)\n");
+    printf("  -i, --import <file>  Import contacts from file and exit\n");
+    printf("  -e, --export <file>  Export contacts to file and exit\n");
+    printf("  -v, --validate       Run validation report and exit\n");
+    printf("  -h, --help           Show this help message\n");
+}
+
+int main(int argc, char *argv[]) {
     system("chcp 65001 > nul");
+    
+    int import_mode = 0;
+    int export_mode = 0;
+    int validate_mode = 0;
+    char import_file[256] = {0};
+    char export_file[256] = {0};
+
+    /* Parse command line arguments */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_usage(argv[0]);
+            return 0;
+        } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--data") == 0) {
+            if (i + 1 < argc) {
+                strncpy(g_data_file, argv[++i], sizeof(g_data_file) - 1);
+            } else {
+                fprintf(stderr, "Error: --data requires a file path\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--import") == 0) {
+            if (i + 1 < argc) {
+                import_mode = 1;
+                strncpy(import_file, argv[++i], sizeof(import_file) - 1);
+            } else {
+                fprintf(stderr, "Error: --import requires a file path\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--export") == 0) {
+            if (i + 1 < argc) {
+                export_mode = 1;
+                strncpy(export_file, argv[++i], sizeof(export_file) - 1);
+            } else {
+                fprintf(stderr, "Error: --export requires a file path\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--validate") == 0) {
+            validate_mode = 1;
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
+
     list_init(&g_book);
     fileio_ensure_dirs();
     fileio_backup();
-    int loaded = fileio_load(&g_book, DATA_FILE);
+
+    int loaded = fileio_load(&g_book, g_data_file);
     if (loaded > 0) {
-        printf("  Loaded %d contacts.\n", loaded);
-        util_pause();
+        printf("  Loaded %d contacts from %s.\n", loaded, g_data_file);
     }
+
+    /* Command line mode: import */
+    if (import_mode) {
+        ImportResult result;
+        int imported = fileio_import(&g_book, import_file, &result);
+        printf("\nImport Report:\n");
+        printf("  Total lines: %d\n", result.total_lines);
+        printf("  Imported: %d\n", result.success_count);
+        printf("  Duplicates skipped: %d\n", result.duplicate_count);
+        printf("  Errors: %d\n", result.error_count);
+        if (result.error_msg[0]) {
+            printf("  Error details: %s\n", result.error_msg);
+        }
+        if (imported > 0) {
+            fileio_save(&g_book, g_data_file);
+            printf("  Saved to %s\n", g_data_file);
+        }
+        list_destroy(&g_book);
+        return 0;
+    }
+
+    /* Command line mode: export */
+    if (export_mode) {
+        fileio_export(&g_book, export_file);
+        printf("  Exported %d contacts to %s\n", g_book.count, export_file);
+        list_destroy(&g_book);
+        return 0;
+    }
+
+    /* Command line mode: validate */
+    if (validate_mode) {
+        char report[4096];
+        int issues = fileio_validate_report(&g_book, report, sizeof(report));
+        printf("%s\n", report);
+        list_destroy(&g_book);
+        return issues > 0 ? 1 : 0;
+    }
+
+    /* Interactive mode */
+    util_pause();
+
     int choice;
     while (1) {
         print_main_menu();
@@ -50,6 +149,8 @@ int main(void) {
             case 8:  menu_import();    break;
             case 9:  menu_export();    break;
             case 10: menu_stats();     break;
+            case 11: menu_trash();     break;
+            case 12: menu_validate();  break;
             case 0:
                 if (g_dirty) {
                     printf("\n  Unsaved changes. Save? (Y/n): ");
@@ -70,28 +171,32 @@ int main(void) {
 
 static void print_main_menu(void) {
     util_clear_screen();
-    util_print_title("\xcd\xa8\xd1\xb6\xc2\xbc\xb9\xdc\xc0\xed\xcf\xb5\xcd\xb3");
-    printf("  \xb5\xb1\xc7\xb0\xc1\xaa\xcf\xb5\xc8\xcb\xca\xfd\xc1\xbf: %d\n\n", g_book.count);
-    printf("    1. \xd0\xc2\xd4\xf6\xc1\xaa\xcf\xb5\xc8\xcb\n");
-    printf("    2. \xc5\xfa\xc1\xbf\xc2\xbc\xc8\xeb\n");
-    printf("    3. \xc1\xf7\xc0\xad\xcd\xa8\xd1\xb6\xc2\xbc\n");
-    printf("    4. \xb2\xe9\xd1\xaf\xc1\xaa\xcf\xb5\xc8\xcb\n");
-    printf("    5. \xd0\xde\xb8\xc4\xc1\xaa\xcf\xb5\xc8\xcb\n");
-    printf("    6. \xc9\xbe\xb3\xfd\xc1\xaa\xcf\xb5\xc8\xcb\n");
-    printf("    7. \xb1\xa3\xb4\xe6\xca\xfd\xbe\xdd\n");
-    printf("    8. \xb5\xbc\xc8\xeb\xca\xfd\xbe\xdd\n");
-    printf("    9. \xb5\xbc\xb3\xf6\xca\xfd\xbe\xdd\n");
-    printf("   10. \xb7\xd6\xc0\xe0\xcd\xb3\xbc\xc6\n");
-    printf("    0. \xcd\xcb\xb3\xf6\xcf\xb5\xcd\xb3\n");
+    util_print_title("Address Book Manager");
+    printf("  Contacts: %d | File: %s\n\n", g_book.count, g_data_file);
+    printf("    1. Add Contact\n");
+    printf("    2. Batch Add\n");
+    printf("    3. Browse\n");
+    printf("    4. Search\n");
+    printf("    5. Modify\n");
+    printf("    6. Delete\n");
+    printf("    7. Save\n");
+    printf("    8. Import\n");
+    printf("    9. Export\n");
+    printf("   10. Statistics\n");
+    printf("   11. Trash (View/Restore)\n");
+    printf("   12. Validate Data\n");
+    printf("    0. Exit\n");
     util_print_line();
-    printf("  \xc7\xeb\xd1\xa1\xd4\xf1\xb9\xa6\xc4\xdc [0-10]: ");
+    printf("  Choice [0-12]: ");
 }
 
 static void menu_add(void) {
     util_clear_screen();
-    util_print_title("\xd0\xc2\xd4\xf6\xc1\xaa\xcf\xb5\xc8\xcb");
+    util_print_title("Add Contact");
     Contact c;
     contact_input(&c);
+    
+    /* Duplicate check */
     if (search_is_duplicate(&g_book, &c)) {
         printf("\n  [Warning] Duplicate contact found!\n");
         printf("  Add anyway? (y/N): ");
@@ -103,6 +208,10 @@ static void menu_add(void) {
             return;
         }
     }
+
+    /* Backup before modify */
+    fileio_backup();
+
     c.id = g_book.next_id;
     Node *node = list_append(&g_book, &c);
     if (node) {
@@ -116,8 +225,12 @@ static void menu_add(void) {
 
 static void menu_batch_add(void) {
     util_clear_screen();
-    util_print_title("\xc5\xfa\xc1\xbf\xc2\xbc\xc8\xeb\xc1\xaa\xcf\xb5\xc8\xcb");
+    util_print_title("Batch Add Contacts");
     printf("  Enter empty name to stop.\n\n");
+    
+    /* Backup before modify */
+    fileio_backup();
+    
     int count = 0;
     while (1) {
         printf("  --- #%d ---\n", count + 1);
@@ -138,7 +251,7 @@ static void menu_batch_add(void) {
         printf("  Mobile: ");
         util_get_line(c.mobile, MAX_MOBILE);
         util_trim(c.mobile);
-        printf("  Category (0-4, default 4): ");
+        printf("  Category (0=family 1=friend 2=work 3=biz 4=other, default 4): ");
         int cat = util_get_int_default(4);
         if (cat < 0 || cat >= CAT_COUNT) cat = CAT_OTHER;
         c.category = (Category)cat;
@@ -238,12 +351,12 @@ static void browse_list(LinkedList *list, const char *title) {
 
 static void menu_browse(void) {
     util_clear_screen();
-    browse_list(&g_book, "\xc1\xf7\xc0\xad\xcd\xa8\xd1\xb6\xc2\xbc");
+    browse_list(&g_book, "Browse Contacts");
 }
 
 static void menu_search(void) {
     util_clear_screen();
-    util_print_title("\xb2\xe9\xd1\xaf\xc1\xaa\xcf\xb5\xc8\xcb");
+    util_print_title("Search Contacts");
     printf("  1. Keyword search\n");
     printf("  2. Category filter\n");
     printf("  Choice: ");
@@ -279,12 +392,16 @@ static void menu_search(void) {
 
 static void menu_modify(void) {
     util_clear_screen();
-    util_print_title("\xd0\xde\xb8\xc4\xc1\xaa\xcf\xb5\xc8\xcb");
+    util_print_title("Modify Contact");
     if (g_book.count == 0) { printf("  No records.\n"); util_pause(); return; }
     printf("  Enter ID: ");
     int id = util_get_int();
     Node *node = list_find_by_id(&g_book, id);
     if (!node) { printf("  Not found.\n"); util_pause(); return; }
+    
+    /* Backup before modify */
+    fileio_backup();
+    
     printf("\n  Current info:\n");
     contact_print(&node->data);
     printf("\n  Enter new values:\n");
@@ -296,7 +413,7 @@ static void menu_modify(void) {
 
 static void menu_delete(void) {
     util_clear_screen();
-    util_print_title("\xc9\xbe\xb3\xfd\xc1\xaa\xcf\xb5\xc8\xcb");
+    util_print_title("Delete Contact");
     if (g_book.count == 0) { printf("  No records.\n"); util_pause(); return; }
     printf("  Enter ID: ");
     int id = util_get_int();
@@ -308,6 +425,8 @@ static void menu_delete(void) {
     char buf[16];
     util_get_line(buf, sizeof(buf));
     if (buf[0] == 'y' || buf[0] == 'Y') {
+        /* Backup before delete */
+        fileio_backup();
         fileio_save_trash(&node->data);
         list_remove_node(&g_book, node);
         node_free(node);
@@ -321,11 +440,11 @@ static void menu_delete(void) {
 
 static void menu_save(void) {
     util_clear_screen();
-    util_print_title("\xb1\xa3\xb4\xe6\xca\xfd\xbe\xdd");
+    util_print_title("Save Data");
     fileio_ensure_dirs();
-    if (fileio_save(&g_book, DATA_FILE)) {
+    if (fileio_save(&g_book, g_data_file)) {
         g_dirty = 0;
-        printf("  Saved %d contacts to %s.\n", g_book.count, DATA_FILE);
+        printf("  Saved %d contacts to %s.\n", g_book.count, g_data_file);
     } else {
         printf("  Save failed!\n");
     }
@@ -334,25 +453,38 @@ static void menu_save(void) {
 
 static void menu_import(void) {
     util_clear_screen();
-    util_print_title("\xb5\xbc\xc8\xeb\xca\xfd\xbe\xdd");
+    util_print_title("Import Data");
+    
+    /* Backup before import */
+    fileio_backup();
+    
     printf("  Enter file path: ");
     char path[256];
     util_get_line(path, sizeof(path));
     util_trim(path);
     if (path[0] == '\0') { printf("  Cancelled.\n"); util_pause(); return; }
-    int imported = fileio_import(&g_book, path);
+    
+    ImportResult result;
+    int imported = fileio_import(&g_book, path, &result);
+    
+    printf("\n  Import Report:\n");
+    printf("  Total lines: %d\n", result.total_lines);
+    printf("  Imported: %d\n", result.success_count);
+    printf("  Duplicates skipped: %d\n", result.duplicate_count);
+    printf("  Errors: %d\n", result.error_count);
+    if (result.error_msg[0]) {
+        printf("  Error details: %s\n", result.error_msg);
+    }
+    
     if (imported > 0) {
         g_dirty = 1;
-        printf("  Imported %d (total: %d).\n", imported, g_book.count);
-    } else {
-        printf("  No records imported.\n");
     }
     util_pause();
 }
 
 static void menu_export(void) {
     util_clear_screen();
-    util_print_title("\xb5\xbc\xb3\xf6\xca\xfd\xbe\xdd");
+    util_print_title("Export Data");
     printf("  Export path (default: data/export.csv): ");
     char path[256];
     util_get_line(path, sizeof(path));
@@ -368,7 +500,7 @@ static void menu_export(void) {
 
 static void menu_stats(void) {
     util_clear_screen();
-    util_print_title("\xb7\xd6\xc0\xe0\xcd\xb3\xbc\xc6");
+    util_print_title("Category Statistics");
     int stats[CAT_COUNT];
     search_category_stats(&g_book, stats);
     printf("  Total: %d\n\n", g_book.count);
@@ -380,5 +512,63 @@ static void menu_stats(void) {
     }
     util_print_line();
     printf("  %-10s  %d\n", "Total", g_book.count);
+    util_pause();
+}
+
+static void menu_trash(void) {
+    util_clear_screen();
+    util_print_title("Trash (Recycle Bin)");
+    
+    LinkedList trash;
+    list_init(&trash);
+    int count = fileio_load_trash(&trash);
+    
+    if (count == 0) {
+        printf("  Trash is empty.\n");
+        util_pause();
+        list_destroy(&trash);
+        return;
+    }
+    
+    printf("  %d contacts in trash.\n\n", count);
+    
+    /* Show trash */
+    contact_print_header();
+    Node *cur = trash.head;
+    while (cur) {
+        contact_print_row(&cur->data);
+        cur = cur->next;
+    }
+    
+    printf("\n  Enter ID to restore, or 0 to cancel: ");
+    int id = util_get_int();
+    
+    if (id > 0) {
+        int new_id = fileio_restore_from_trash(&g_book, &trash, id);
+        if (new_id > 0) {
+            g_dirty = 1;
+            printf("  Restored with new ID: %d\n", new_id);
+        } else {
+            printf("  ID not found in trash.\n");
+        }
+    }
+    
+    list_destroy(&trash);
+    util_pause();
+}
+
+static void menu_validate(void) {
+    util_clear_screen();
+    util_print_title("Data Validation Report");
+    
+    char report[4096];
+    int issues = fileio_validate_report(&g_book, report, sizeof(report));
+    printf("%s\n", report);
+    
+    if (issues > 0) {
+        printf("  Found %d issues. Please fix them.\n", issues);
+    } else {
+        printf("  All data is valid.\n");
+    }
     util_pause();
 }
